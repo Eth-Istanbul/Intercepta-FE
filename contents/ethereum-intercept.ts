@@ -74,7 +74,7 @@ const generateTransactionId = () => {
     provider.request = async function(args: { method: string; params?: any[] }) {
       console.log("[Ethereum Interceptor] Request called:", args.method)
 
-      // List of transaction-related methods to intercept
+      // Only intercept actual transaction methods (sending funds or signing)
       const transactionMethods = [
         'eth_sendTransaction',
         'eth_signTransaction', 
@@ -84,13 +84,10 @@ const generateTransactionId = () => {
         'eth_signTypedData',
         'eth_signTypedData_v1',
         'eth_signTypedData_v3',
-        'eth_signTypedData_v4',
-        'wallet_sendDomainMetadata',
-        'wallet_addEthereumChain',
-        'wallet_switchEthereumChain'
+        'eth_signTypedData_v4'
       ]
 
-      // Check if this is a transaction-related method
+      // Only intercept actual transaction methods
       if (transactionMethods.includes(args.method)) {
         interceptCount++
         const transactionId = generateTransactionId()
@@ -121,12 +118,11 @@ const generateTransactionId = () => {
           }, 5 * 60 * 1000)
         })
 
-        // Send to extension for approval
+        // Send transaction for approval (all transactions require approval)
         try {
           window.postMessage({
-            type: 'PLASMO_ETHEREUM_INTERCEPTED',
-            data: interceptedData,
-            requiresApproval: true
+            type: 'PLASMO_TRANSACTION_APPROVAL',
+            data: interceptedData
           }, '*')
           
           console.log("[Ethereum Interceptor] Transaction sent for approval, waiting...")

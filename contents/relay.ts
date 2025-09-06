@@ -20,40 +20,34 @@ window.addEventListener('message', (event) => {
     return
   }
   
-  // Handle intercepted transactions that need approval
-  if (event.data && event.data.type === 'PLASMO_ETHEREUM_INTERCEPTED') {
+  // Handle transactions that need approval
+  if (event.data && event.data.type === 'PLASMO_TRANSACTION_APPROVAL') {
     messageCount++
-    const requiresApproval = event.data.requiresApproval || false
     const transactionData = event.data.data
     
-    console.log("[Ethereum Relay] 🎯 Transaction #" + messageCount + " received from interceptor")
+    console.log("[Ethereum Relay] 🎯 Transaction #" + messageCount + " received for approval")
     console.log("[Ethereum Relay] Transaction details:", {
       id: transactionData.id,
       method: transactionData.method,
       origin: transactionData.origin,
-      requiresApproval: requiresApproval,
       timestamp: new Date(transactionData.timestamp).toISOString()
     })
     
-    // Forward to background script
+    // Forward to background script for approval
     chrome.runtime.sendMessage({
-      type: requiresApproval ? 'TRANSACTION_PENDING_APPROVAL' : 'TRANSACTION_INTERCEPTED',
-      data: transactionData,
-      requiresApproval: requiresApproval
+      type: 'TRANSACTION_PENDING_APPROVAL',
+      data: transactionData
     }, (response) => {
       if (chrome.runtime.lastError) {
         console.error("[Ethereum Relay] ❌ Error sending to background:", chrome.runtime.lastError)
-        // If approval is required and we can't communicate with background, reject
-        if (requiresApproval) {
-          window.postMessage({
-            type: 'PLASMO_TRANSACTION_RESPONSE',
-            transactionId: transactionData.id,
-            approved: false
-          }, '*')
-        }
+        // Can't communicate with background, reject the transaction
+        window.postMessage({
+          type: 'PLASMO_TRANSACTION_RESPONSE',
+          transactionId: transactionData.id,
+          approved: false
+        }, '*')
       } else {
-        console.log("[Ethereum Relay] ✅ Transaction #" + messageCount + " forwarded to background")
-        // If this requires approval, the popup will be opened by the background script
+        console.log("[Ethereum Relay] ✅ Transaction #" + messageCount + " forwarded to background for approval")
       }
     })
   }
