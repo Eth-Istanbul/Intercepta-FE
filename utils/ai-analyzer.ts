@@ -1,115 +1,74 @@
-import { createParser } from 'eventsource-parser'
+// utils/ai-analyzer.ts
 
-interface TransactionData {
-  from: string
-  to: string
-  value?: string
-  data?: string
-  gas?: string
-  gasPrice?: string
+// Represents the structure of an intercepted transaction for AI analysis
+export interface AIAnalysisRequest {
+  id: string
+  method: string
+  params: any[]
+  timestamp: number
+  origin: string
+  userAgent: string
+  intercepted: boolean
+  status: "pending" | "approved" | "rejected"
 }
 
-interface AISummaryCallback {
-  onChunk: (chunk: string) => void
-  onComplete: (fullText: string) => void
-  onError: (error: Error) => void
+// Represents the structure of the AI analysis response
+export interface AIAnalysisResponse {
+  id: string
+  method: string
+  success: boolean
+  analysis: {
+    type: string
+    riskLevel: string
+    fraudScore: number
+    description: string
+    reasoning: string
+    warnings: string[]
+    contractInfo: {
+      address: string
+      abiAvailable: boolean
+      abiSource: string
+      sourceCodeAvailable: boolean
+      functionName: string
+      functionDescription: string
+    }
+    aiConfidence: number
+  }
+  timestamp: string
 }
 
-// Fetch AI analysis from backend with streaming support
-export async function fetchAITransactionAnalysis(
-  transactionData: TransactionData,
-  callbacks: AISummaryCallback
-): Promise<void> {
-  const BACKEND_URL = 'http://localhost:8000'
-  
+const API_ENDPOINT = "http://localhost:3000/tx/ai-analyze"
+
+/**
+ * Fetches transaction analysis from the AI backend.
+ * @param transactionData - The intercepted transaction data.
+ * @returns A promise that resolves to the AI analysis response.
+ */
+export async function fetchAIAnalysis(
+  transactionData: AIAnalysisRequest
+): Promise<AIAnalysisResponse> {
   try {
-    const response = await fetch(BACKEND_URL, {
-      method: 'POST',
+    const response = await fetch(API_ENDPOINT, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        from: transactionData.from,
-        to: transactionData.to,
-        value: transactionData.value,
-        data: transactionData.data,
-        gas: transactionData.gas,
-        gasPrice: transactionData.gasPrice
-      })
+      body: JSON.stringify(transactionData)
     })
 
     if (!response.ok) {
+      const errorBody = await response.text()
+      console.error("[AI Analyzer] HTTP error:", response.status, errorBody)
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const reader = response.body?.getReader()
-    const decoder = new TextDecoder()
-    let accumulatedText = ''
+    const analysisResult: AIAnalysisResponse = await response.json()
+    console.log("[AI Analyzer] Analysis received:", analysisResult)
+    return analysisResult
     
-    if (!reader) {
-      throw new Error('Response body is not readable')
-    }
-
-    // Create SSE parser for handling the stream
-    const parser = createParser({
-      onEvent: (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.text) {
-            accumulatedText += data.text
-            callbacks.onChunk(data.text)
-          }
-        } catch (e) {
-          // Handle non-JSON data
-          if (event.data) {
-            accumulatedText += event.data
-            callbacks.onChunk(event.data)
-          }
-        }
-      }
-    })
-
-    // Read the stream
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      
-      const chunk = decoder.decode(value, { stream: true })
-      
-      // Check if it's SSE formatted data
-      if (chunk.startsWith('data:')) {
-        parser.feed(chunk)
-      } else {
-        // Handle plain text streaming
-        accumulatedText += chunk
-        callbacks.onChunk(chunk)
-      }
-    }
-    
-    callbacks.onComplete(accumulatedText)
   } catch (error) {
-    console.error('[AI Analyzer] Error fetching analysis:', error)
-    callbacks.onError(error as Error)
+    console.error("[AI Analyzer] Error fetching analysis:", error)
+    // Re-throw the error so the caller can handle it
+    throw error
   }
-}
-
-// Simplified version for non-streaming response
-export async function fetchAITransactionSummary(
-  transactionData: TransactionData
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let fullText = ''
-    
-    fetchAITransactionAnalysis(transactionData, {
-      onChunk: (chunk) => {
-        fullText += chunk
-      },
-      onComplete: (text) => {
-        resolve(text)
-      },
-      onError: (error) => {
-        reject(error)
-      }
-    })
-  })
 }

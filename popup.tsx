@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { analyzeTransaction, formatWeiToEth, formatAddress } from "./utils/transaction-analyzer"
-import { fetchAITransactionAnalysis } from "./utils/ai-analyzer"
+import { fetchAIAnalysis, type AIAnalysisResponse } from "./utils/ai-analyzer"
 import "./tailwind.css"
 
 interface InterceptedTransaction {
@@ -21,10 +21,17 @@ function IndexPopup() {
   const [filter, setFilter] = useState<string>("")
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true)
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
-  const [aiSummaries, setAiSummaries] = useState<Record<string, { text: string; loading: boolean; error?: string }>>({})
+  const [aiSummaries, setAiSummaries] = useState<Record<string, { analysis?: AIAnalysisResponse; loading: boolean; error?: string }>>({})
+  const fetchingRef = useRef<Set<string>>(new Set())
+  const aiSummariesRef = useRef(aiSummaries)
+
+  // Keep aiSummariesRef in sync with aiSummaries state
+  useEffect(() => {
+    aiSummariesRef.current = aiSummaries
+  }, [aiSummaries])
 
   // Load all transactions from storage
-  const loadTransactions = async () => {
+  const loadTransactions = useCallback(async () => {
     console.log("[Popup] Loading transactions...")
     
     // Load both pending and history transactions
@@ -46,81 +53,54 @@ function IndexPopup() {
           // Fetch AI analysis for pending transactions
           pending.forEach(tx => {
             if (tx.id && tx.method === 'eth_sendTransaction' && tx.params?.[0]) {
-              fetchAIAnalysisForTransaction(tx)
+              // Only fetch if we haven't started fetching for this tx
+              if (!aiSummariesRef.current[tx.id] && !fetchingRef.current.has(tx.id)) {
+                fetchAIAnalysisForTransaction(tx)
+              }
             }
           })
         }
       }
     })
-  }
+  }, [])
 
   // Fetch AI analysis for a transaction
   const fetchAIAnalysisForTransaction = async (tx: InterceptedTransaction) => {
-    if (!tx.id || !tx.params?.[0]) return
-    
-    const txData = tx.params[0]
+    if (!tx.id || !tx.status || fetchingRef.current.has(tx.id)) return
+
     const transactionId = tx.id
     
-    // Set loading state
-    setAiSummaries(prev => ({
-      ...prev,
-      [transactionId]: { text: '', loading: true }
-    }))
-    
     try {
-      let accumulatedText = ''
+      fetchingRef.current.add(transactionId)
+      // Set loading state
+      setAiSummaries(prev => ({
+        ...prev,
+        [transactionId]: { loading: true }
+      }))
       
-      await fetchAITransactionAnalysis({
-        from: txData.from,
-        to: txData.to,
-        value: txData.value,
-        data: txData.data,
-        gas: txData.gas,
-        gasPrice: txData.gasPrice
-      }, {
-        onChunk: (chunk) => {
-          accumulatedText += chunk
-          // Update state with streaming text
-          setAiSummaries(prev => ({
-            ...prev,
-            [transactionId]: { 
-              text: accumulatedText, 
-              loading: true 
-            }
-          }))
-        },
-        onComplete: (fullText) => {
-          // Mark as complete
-          setAiSummaries(prev => ({
-            ...prev,
-            [transactionId]: { 
-              text: fullText, 
-              loading: false 
-            }
-          }))
-        },
-        onError: (error) => {
-          console.error("[Popup] Error fetching AI analysis:", error)
-          setAiSummaries(prev => ({
-            ...prev,
-            [transactionId]: { 
-              text: '', 
-              loading: false, 
-              error: error.message 
-            }
-          }))
-        }
-      })
-    } catch (error) {
-      console.error("[Popup] Error in AI analysis:", error)
+      // The transaction object should be compatible with AIAnalysisRequest
+      const analysisResult = await fetchAIAnalysis(tx as any)
+
+      // Mark as complete
       setAiSummaries(prev => ({
         ...prev,
         [transactionId]: { 
-          text: '', 
-          loading: false, 
-          error: 'Failed to fetch AI analysis' 
+          analysis: analysisResult, 
+          loading: false 
         }
       }))
+    } catch (error) {
+      console.error("[Popup] Error fetching AI analysis:", error)
+      setAiSummaries(prev => ({
+        ...prev,
+        [transactionId]: { 
+          analysis: undefined, 
+          loading: false, 
+          error: error instanceof Error ? error.message : "Failed to fetch analysis"
+        }
+      }))
+    } finally {
+      fetchingRef.current.delete(transactionId)
     }
   }
 
@@ -153,7 +133,9 @@ function IndexPopup() {
           // Fetch AI analysis for pending transactions
           response.transactions.forEach((tx: InterceptedTransaction) => {
             if (tx.id && tx.method === 'eth_sendTransaction' && tx.params?.[0]) {
-              fetchAIAnalysisForTransaction(tx)
+              if (!aiSummariesRef.current[tx.id] && !fetchingRef.current.has(tx.id)) {
+                fetchAIAnalysisForTransaction(tx)
+              }
             }
           })
         }
@@ -419,18 +401,111 @@ function IndexPopup() {
                     {aiSummary?.loading ? (
                       <div className="flex flex-col gap-2">
                         <div className="w-5 h-5 border-2 border-praetor-border border-t-praetor-accent rounded-full animate-spin"></div>
-                        {aiSummary.text ? (
-                          <div className="bg-praetor-gray/30 p-2.5 rounded-md text-xs leading-relaxed text-gray-700 whitespace-pre-wrap break-words border border-dashed border-praetor-accent/50 animate-pulse">{aiSummary.text}</div>
-                        ) : (
-                          <span className="text-xs text-gray-400">Analyzing transaction...</span>
-                        )}
+                        <span className="text-xs text-gray-400">Analyzing transaction...</span>
                       </div>
                     ) : aiSummary?.error ? (
                       <div className="bg-praetor-danger/10 border border-praetor-danger/30 text-praetor-danger px-2.5 py-2 rounded-md text-xs">
                         ⚠️ {aiSummary.error}
                       </div>
-                    ) : aiSummary?.text ? (
-                      <div className="bg-white p-2.5 rounded-md text-xs leading-relaxed text-gray-800 whitespace-pre-wrap break-words">{aiSummary.text}</div>
+                    ) : aiSummary?.analysis ? (
+                      <div className="space-y-3">
+                        {/* Risk Level and Fraud Score Badges */}
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <div className={`px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
+                            aiSummary.analysis.analysis.riskLevel === 'low' 
+                              ? 'bg-green-100 text-green-800 border border-green-200' 
+                              : aiSummary.analysis.analysis.riskLevel === 'medium'
+                              ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                              : 'bg-red-100 text-red-800 border border-red-200'
+                          }`}>
+                            🛡️ {aiSummary.analysis.analysis.riskLevel} Risk
+                          </div>
+                          
+                          <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            aiSummary.analysis.analysis.fraudScore < 30 
+                              ? 'bg-green-100 text-green-800 border border-green-200' 
+                              : aiSummary.analysis.analysis.fraudScore < 70
+                              ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                              : 'bg-red-100 text-red-800 border border-red-200'
+                          }`}>
+                            📊 Fraud Score: {aiSummary.analysis.analysis.fraudScore}%
+                          </div>
+
+                          <div className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                            🎯 {aiSummary.analysis.analysis.aiConfidence}% Confidence
+                          </div>
+
+                          <div className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                            🔧 {aiSummary.analysis.analysis.type.replace('_', ' ').toUpperCase()}
+                          </div>
+                        </div>
+
+                        {/* Contract Information */}
+                        {aiSummary.analysis.analysis.contractInfo && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-semibold text-gray-700">📋 Contract Info</span>
+                              <div className="flex gap-1">
+                                {aiSummary.analysis.analysis.contractInfo.abiAvailable && (
+                                  <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">✓ ABI</span>
+                                )}
+                                {aiSummary.analysis.analysis.contractInfo.sourceCodeAvailable && (
+                                  <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">✓ Verified</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-600 break-all">
+                              <strong>Address:</strong> {aiSummary.analysis.analysis.contractInfo.address}
+                            </div>
+                            {aiSummary.analysis.analysis.contractInfo.functionName && (
+                              <div className="text-xs text-gray-600">
+                                <strong>Function:</strong> {aiSummary.analysis.analysis.contractInfo.functionName}()
+                              </div>
+                            )}
+                            {aiSummary.analysis.analysis.contractInfo.functionDescription && (
+                              <div className="text-xs text-gray-600 leading-relaxed">
+                                <strong>Description:</strong> {aiSummary.analysis.analysis.contractInfo.functionDescription}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Main Description */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                          <div className="text-xs font-semibold text-blue-800 mb-1">📝 Analysis Summary</div>
+                          <p className="text-xs text-gray-800 leading-relaxed">{aiSummary.analysis.analysis.description}</p>
+                        </div>
+
+                        {/* Warnings */}
+                        {aiSummary.analysis.analysis.warnings && aiSummary.analysis.analysis.warnings.length > 0 && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2">
+                            <div className="flex items-center gap-1 mb-2">
+                              <span className="text-amber-700 text-sm">⚠️</span>
+                              <span className="text-xs font-semibold text-amber-800">Security Warnings</span>
+                            </div>
+                            <div className="space-y-1">
+                              {aiSummary.analysis.analysis.warnings.map((warning, idx) => (
+                                <div key={idx} className="flex items-start gap-2">
+                                  <span className="text-amber-600 text-xs mt-0.5">•</span>
+                                  <span className="text-xs text-amber-800 leading-relaxed">{warning}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Reasoning (Collapsible) */}
+                        {aiSummary.analysis.analysis.reasoning && (
+                          <details className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+                            <summary className="text-xs font-semibold text-gray-700 cursor-pointer hover:text-gray-900">
+                              🔍 Detailed Reasoning (Click to expand)
+                            </summary>
+                            <div className="mt-2 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">
+                              {aiSummary.analysis.analysis.reasoning}
+                            </div>
+                          </details>
+                        )}
+                      </div>
                     ) : (
                       <div className="py-2">
                         <button 
