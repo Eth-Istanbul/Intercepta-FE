@@ -20,27 +20,58 @@ window.addEventListener('message', (event) => {
     return
   }
   
-  // Only log our specific message type to reduce noise
+  // Handle intercepted transactions that need approval
   if (event.data && event.data.type === 'PLASMO_ETHEREUM_INTERCEPTED') {
     messageCount++
+    const requiresApproval = event.data.requiresApproval || false
+    const transactionData = event.data.data
+    
     console.log("[Ethereum Relay] 🎯 Transaction #" + messageCount + " received from interceptor")
     console.log("[Ethereum Relay] Transaction details:", {
-      method: event.data.data.method,
-      origin: event.data.data.origin,
-      timestamp: new Date(event.data.data.timestamp).toISOString()
+      id: transactionData.id,
+      method: transactionData.method,
+      origin: transactionData.origin,
+      requiresApproval: requiresApproval,
+      timestamp: new Date(transactionData.timestamp).toISOString()
     })
     
     // Forward to background script
     chrome.runtime.sendMessage({
-      type: 'TRANSACTION_INTERCEPTED',
-      data: event.data.data
+      type: requiresApproval ? 'TRANSACTION_PENDING_APPROVAL' : 'TRANSACTION_INTERCEPTED',
+      data: transactionData,
+      requiresApproval: requiresApproval
     }, (response) => {
       if (chrome.runtime.lastError) {
         console.error("[Ethereum Relay] ❌ Error sending to background:", chrome.runtime.lastError)
+        // If approval is required and we can't communicate with background, reject
+        if (requiresApproval) {
+          window.postMessage({
+            type: 'PLASMO_TRANSACTION_RESPONSE',
+            transactionId: transactionData.id,
+            approved: false
+          }, '*')
+        }
       } else {
         console.log("[Ethereum Relay] ✅ Transaction #" + messageCount + " forwarded to background")
+        // If this requires approval, the popup will be opened by the background script
       }
     })
+  }
+})
+
+// Listen for approval/rejection messages from the background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'TRANSACTION_APPROVED' || message.type === 'TRANSACTION_REJECTED') {
+    console.log(`[Ethereum Relay] Received ${message.type} for transaction ${message.transactionId}`)
+    
+    // Forward the approval/rejection to the main world
+    window.postMessage({
+      type: 'PLASMO_TRANSACTION_RESPONSE',
+      transactionId: message.transactionId,
+      approved: message.type === 'TRANSACTION_APPROVED'
+    }, '*')
+    
+    sendResponse({ success: true })
   }
 })
 

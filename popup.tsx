@@ -3,39 +3,52 @@ import { analyzeTransaction, formatWeiToEth, formatAddress } from "./utils/trans
 import "./style.css"
 
 interface InterceptedTransaction {
+  id?: string
   method: string
   params: any[]
   timestamp: number
   origin: string
   userAgent: string
   intercepted: boolean
+  status?: 'pending' | 'approved' | 'rejected'
+  tabId?: number
 }
 
 function IndexPopup() {
   const [transactions, setTransactions] = useState<InterceptedTransaction[]>([])
+  const [pendingTransactions, setPendingTransactions] = useState<InterceptedTransaction[]>([])
   const [filter, setFilter] = useState<string>("")
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true)
+  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
 
-  // Load transactions from storage
+  // Load all transactions from storage
   const loadTransactions = async () => {
     console.log("[Popup] Loading transactions...")
     
-    // Try to get directly from chrome storage first
-    chrome.storage.local.get(['intercepted_transactions'], (result) => {
+    // Load both pending and history transactions
+    chrome.storage.local.get(['intercepted_transactions', 'pending_transactions'], (result) => {
       if (chrome.runtime.lastError) {
         console.error("[Popup] Error reading from storage:", chrome.runtime.lastError)
         // Fallback to message passing
         loadViaMessage()
       } else {
-        const txs = result.intercepted_transactions || []
-        console.log("[Popup] Loaded transactions from storage:", txs.length)
-        setTransactions(txs.reverse()) // Show newest first
+        const history = result.intercepted_transactions || []
+        const pending = result.pending_transactions || []
+        console.log("[Popup] Loaded transactions - History:", history.length, "Pending:", pending.length)
+        setTransactions(history.reverse()) // Show newest first
+        setPendingTransactions(pending.reverse()) // Show newest first
+        
+        // If there are pending transactions, switch to pending tab
+        if (pending.length > 0) {
+          setActiveTab('pending')
+        }
       }
     })
   }
 
   // Fallback to message passing
   const loadViaMessage = () => {
+    // Load history
     chrome.runtime.sendMessage({ type: 'GET_TRANSACTIONS' }, (response) => {
       if (chrome.runtime.lastError) {
         console.error("[Popup] Error getting transactions via message:", chrome.runtime.lastError)
@@ -46,6 +59,22 @@ function IndexPopup() {
       } else {
         console.log("[Popup] No transactions in response")
         setTransactions([])
+      }
+    })
+    
+    // Load pending
+    chrome.runtime.sendMessage({ type: 'GET_PENDING_TRANSACTIONS' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error("[Popup] Error getting pending transactions:", chrome.runtime.lastError)
+        setPendingTransactions([])
+      } else if (response?.transactions) {
+        console.log("[Popup] Received pending transactions:", response.transactions.length)
+        setPendingTransactions(response.transactions.reverse())
+        if (response.transactions.length > 0) {
+          setActiveTab('pending')
+        }
+      } else {
+        setPendingTransactions([])
       }
     })
   }
@@ -62,15 +91,55 @@ function IndexPopup() {
 
   // Clear all transactions
   const clearTransactions = async () => {
-    // Clear directly from chrome storage
-    chrome.storage.local.remove(['intercepted_transactions'], () => {
+    const keysToRemove = activeTab === 'pending' ? ['pending_transactions'] : ['intercepted_transactions']
+    chrome.storage.local.remove(keysToRemove, () => {
       if (chrome.runtime.lastError) {
         console.error("[Popup] Error clearing transactions:", chrome.runtime.lastError)
       } else {
         console.log("[Popup] Transactions cleared")
-        setTransactions([])
-        // Also update badge
-        chrome.action.setBadgeText({ text: "" })
+        if (activeTab === 'pending') {
+          setPendingTransactions([])
+        } else {
+          setTransactions([])
+        }
+        // Update badge count
+        chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' })
+      }
+    })
+  }
+
+  // Approve a transaction
+  const approveTransaction = (transaction: InterceptedTransaction) => {
+    if (!transaction.id || transaction.tabId === undefined) return
+    
+    console.log("[Popup] Approving transaction:", transaction.id)
+    chrome.runtime.sendMessage({
+      type: 'APPROVE_TRANSACTION',
+      transactionId: transaction.id,
+      tabId: transaction.tabId
+    }, (response) => {
+      if (response?.success) {
+        console.log("[Popup] Transaction approved")
+        // Reload to update the list
+        loadTransactions()
+      }
+    })
+  }
+
+  // Reject a transaction
+  const rejectTransaction = (transaction: InterceptedTransaction) => {
+    if (!transaction.id || transaction.tabId === undefined) return
+    
+    console.log("[Popup] Rejecting transaction:", transaction.id)
+    chrome.runtime.sendMessage({
+      type: 'REJECT_TRANSACTION',
+      transactionId: transaction.id,
+      tabId: transaction.tabId
+    }, (response) => {
+      if (response?.success) {
+        console.log("[Popup] Transaction rejected")
+        // Reload to update the list
+        loadTransactions()
       }
     })
   }
@@ -93,8 +162,9 @@ function IndexPopup() {
     return '#6b7280'
   }
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter(tx => 
+  // Filter transactions based on active tab
+  const currentTransactions = activeTab === 'pending' ? pendingTransactions : transactions
+  const filteredTransactions = currentTransactions.filter(tx => 
     filter === "" || 
     tx.method.toLowerCase().includes(filter.toLowerCase()) ||
     tx.origin.toLowerCase().includes(filter.toLowerCase())
@@ -154,7 +224,7 @@ function IndexPopup() {
             🔄 Refresh
           </button>
           <button onClick={clearTransactions} className="btn-clear">
-            🗑️ Clear
+            🗑️ Clear {activeTab === 'pending' ? 'Pending' : 'History'}
           </button>
           <button onClick={() => {
             // Test button to verify system is working
@@ -184,6 +254,21 @@ function IndexPopup() {
         </div>
       </div>
 
+      <div className="tabs-container">
+        <button 
+          className={`tab ${activeTab === 'pending' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pending')}
+        >
+          ⏳ Pending ({pendingTransactions.length})
+        </button>
+        <button 
+          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          📜 History ({transactions.length})
+        </button>
+      </div>
+
       <div className="filter-container">
         <input 
           type="text"
@@ -196,8 +281,8 @@ function IndexPopup() {
 
       <div className="stats">
         <div className="stat">
-          <span className="stat-label">Total Intercepted:</span>
-          <span className="stat-value">{transactions.length}</span>
+          <span className="stat-label">Total {activeTab === 'pending' ? 'Pending' : 'History'}:</span>
+          <span className="stat-value">{currentTransactions.length}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Showing:</span>
@@ -208,12 +293,12 @@ function IndexPopup() {
       <div className="transactions-container">
         {filteredTransactions.length === 0 ? (
           <div className="empty-state">
-            <p>No transactions intercepted yet.</p>
+            <p>No {activeTab === 'pending' ? 'pending' : ''} transactions {activeTab === 'pending' ? 'awaiting approval' : 'intercepted yet'}.</p>
             <p className="hint">Visit a DApp and interact with your wallet to see intercepted transactions.</p>
           </div>
         ) : (
           filteredTransactions.map((tx, index) => (
-            <div key={`${tx.timestamp}-${index}`} className="transaction-card">
+            <div key={`${tx.id || tx.timestamp}-${index}`} className="transaction-card">
               <div className="transaction-header">
                 <span 
                   className="method-badge"
@@ -231,6 +316,28 @@ function IndexPopup() {
                   <strong>Parameters:</strong>
                   {formatParams(tx.method, tx.params)}
                 </div>
+                {activeTab === 'pending' && tx.status === 'pending' && (
+                  <div className="action-buttons">
+                    <button 
+                      className="btn-approve"
+                      onClick={() => approveTransaction(tx)}
+                    >
+                      ✅ Approve & Send to Wallet
+                    </button>
+                    <button 
+                      className="btn-reject"
+                      onClick={() => rejectTransaction(tx)}
+                    >
+                      ❌ Reject
+                    </button>
+                  </div>
+                )}
+                {tx.status === 'approved' && (
+                  <div className="status-badge approved">✅ Approved</div>
+                )}
+                {tx.status === 'rejected' && (
+                  <div className="status-badge rejected">❌ Rejected</div>
+                )}
               </div>
             </div>
           ))

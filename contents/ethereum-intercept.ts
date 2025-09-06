@@ -27,11 +27,24 @@ interface InterceptedTransaction {
   origin: string
   userAgent: string
   intercepted: boolean
+  id?: string  // Unique ID for tracking pending transactions
+  status?: 'pending' | 'approved' | 'rejected'
 }
 
 // Track wrapped providers to avoid double-wrapping
 const wrappedProviders = new WeakSet<any>()
 let interceptCount = 0
+
+// Store pending transaction promises
+const pendingTransactions = new Map<string, {
+  resolve: (value: any) => void
+  reject: (reason?: any) => void
+}>()
+
+// Generate unique ID for each transaction
+const generateTransactionId = () => {
+  return `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
 
 // Initialize interceptor immediately
 ;(() => {
@@ -80,38 +93,43 @@ let interceptCount = 0
       // Check if this is a transaction-related method
       if (transactionMethods.includes(args.method)) {
         interceptCount++
+        const transactionId = generateTransactionId()
         
         const interceptedData: InterceptedTransaction = {
+          id: transactionId,
           method: args.method,
           params: args.params || [],
           timestamp: Date.now(),
           origin: window.location.origin,
           userAgent: navigator.userAgent,
-          intercepted: true
+          intercepted: true,
+          status: 'pending'
         }
 
         console.log(`[Ethereum Interceptor] Transaction #${interceptCount} intercepted:`, interceptedData)
 
-        // Send to extension via postMessage
+        // Create a promise that will be resolved when user approves/rejects
+        const approvalPromise = new Promise((resolve, reject) => {
+          pendingTransactions.set(transactionId, { resolve, reject })
+          
+          // Set a timeout to auto-reject if no response (5 minutes)
+          setTimeout(() => {
+            if (pendingTransactions.has(transactionId)) {
+              pendingTransactions.delete(transactionId)
+              reject(new Error('Transaction approval timeout'))
+            }
+          }, 5 * 60 * 1000)
+        })
+
+        // Send to extension for approval
         try {
           window.postMessage({
             type: 'PLASMO_ETHEREUM_INTERCEPTED',
-            data: interceptedData
+            data: interceptedData,
+            requiresApproval: true
           }, '*')
           
-          console.log("[Ethereum Interceptor] Transaction posted via postMessage")
-
-          // Also store in localStorage as backup
-          const stored = localStorage.getItem('intercepted_transactions')
-          const transactions = stored ? JSON.parse(stored) : []
-          transactions.push(interceptedData)
-          
-          // Keep only last 50 transactions
-          if (transactions.length > 50) {
-            transactions.shift()
-          }
-          
-          localStorage.setItem('intercepted_transactions', JSON.stringify(transactions))
+          console.log("[Ethereum Interceptor] Transaction sent for approval, waiting...")
 
           // Log specific transaction details
           if (args.method === 'eth_sendTransaction' && args.params?.[0]) {
@@ -125,12 +143,25 @@ let interceptCount = 0
               gasPrice: txParams.gasPrice
             })
           }
+
+          // Wait for approval
+          const result = await approvalPromise
+          
+          if (result === 'approved') {
+            console.log(`[Ethereum Interceptor] Transaction ${transactionId} approved, proceeding to wallet...`)
+            // Proceed with the original request
+            return originalRequest(args)
+          } else {
+            console.log(`[Ethereum Interceptor] Transaction ${transactionId} rejected by user`)
+            throw new Error('Transaction rejected by user')
+          }
         } catch (error) {
           console.error("[Ethereum Interceptor] Error processing transaction:", error)
+          throw error
         }
       }
 
-      // Call original method
+      // Non-transaction methods pass through immediately
       return originalRequest(args)
     }
 
@@ -242,6 +273,26 @@ let interceptCount = 0
       },
       configurable: true
     })
+  })
+
+  // Listen for approval/rejection messages from the extension
+  window.addEventListener('message', (event) => {
+    if (event.source !== window) return
+    
+    if (event.data && event.data.type === 'PLASMO_TRANSACTION_RESPONSE') {
+      const { transactionId, approved } = event.data
+      console.log(`[Ethereum Interceptor] Received response for ${transactionId}: ${approved ? 'approved' : 'rejected'}`)
+      
+      const pending = pendingTransactions.get(transactionId)
+      if (pending) {
+        if (approved) {
+          pending.resolve('approved')
+        } else {
+          pending.reject(new Error('Transaction rejected by user'))
+        }
+        pendingTransactions.delete(transactionId)
+      }
+    }
   })
 
   // Log current state
