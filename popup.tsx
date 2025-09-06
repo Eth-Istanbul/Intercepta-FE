@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { analyzeTransaction, formatWeiToEth, formatAddress } from "./utils/transaction-analyzer"
+import { fetchAITransactionAnalysis } from "./utils/ai-analyzer"
 import "./style.css"
 
 interface InterceptedTransaction {
@@ -20,6 +21,7 @@ function IndexPopup() {
   const [filter, setFilter] = useState<string>("")
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true)
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
+  const [aiSummaries, setAiSummaries] = useState<Record<string, { text: string; loading: boolean; error?: string }>>({})
 
   // Load all transactions from storage
   const loadTransactions = async () => {
@@ -41,9 +43,85 @@ function IndexPopup() {
         // If there are pending transactions, switch to pending tab
         if (pending.length > 0) {
           setActiveTab('pending')
+          // Fetch AI analysis for pending transactions
+          pending.forEach(tx => {
+            if (tx.id && tx.method === 'eth_sendTransaction' && tx.params?.[0]) {
+              fetchAIAnalysisForTransaction(tx)
+            }
+          })
         }
       }
     })
+  }
+
+  // Fetch AI analysis for a transaction
+  const fetchAIAnalysisForTransaction = async (tx: InterceptedTransaction) => {
+    if (!tx.id || !tx.params?.[0]) return
+    
+    const txData = tx.params[0]
+    const transactionId = tx.id
+    
+    // Set loading state
+    setAiSummaries(prev => ({
+      ...prev,
+      [transactionId]: { text: '', loading: true }
+    }))
+    
+    try {
+      let accumulatedText = ''
+      
+      await fetchAITransactionAnalysis({
+        from: txData.from,
+        to: txData.to,
+        value: txData.value,
+        data: txData.data,
+        gas: txData.gas,
+        gasPrice: txData.gasPrice
+      }, {
+        onChunk: (chunk) => {
+          accumulatedText += chunk
+          // Update state with streaming text
+          setAiSummaries(prev => ({
+            ...prev,
+            [transactionId]: { 
+              text: accumulatedText, 
+              loading: true 
+            }
+          }))
+        },
+        onComplete: (fullText) => {
+          // Mark as complete
+          setAiSummaries(prev => ({
+            ...prev,
+            [transactionId]: { 
+              text: fullText, 
+              loading: false 
+            }
+          }))
+        },
+        onError: (error) => {
+          console.error("[Popup] Error fetching AI analysis:", error)
+          setAiSummaries(prev => ({
+            ...prev,
+            [transactionId]: { 
+              text: '', 
+              loading: false, 
+              error: error.message 
+            }
+          }))
+        }
+      })
+    } catch (error) {
+      console.error("[Popup] Error in AI analysis:", error)
+      setAiSummaries(prev => ({
+        ...prev,
+        [transactionId]: { 
+          text: '', 
+          loading: false, 
+          error: 'Failed to fetch AI analysis' 
+        }
+      }))
+    }
   }
 
   // Fallback to message passing
@@ -72,6 +150,12 @@ function IndexPopup() {
         setPendingTransactions(response.transactions.reverse())
         if (response.transactions.length > 0) {
           setActiveTab('pending')
+          // Fetch AI analysis for pending transactions
+          response.transactions.forEach((tx: InterceptedTransaction) => {
+            if (tx.id && tx.method === 'eth_sendTransaction' && tx.params?.[0]) {
+              fetchAIAnalysisForTransaction(tx)
+            }
+          })
         }
       } else {
         setPendingTransactions([])
@@ -297,50 +381,90 @@ function IndexPopup() {
             <p className="hint">Visit a DApp and interact with your wallet to see intercepted transactions.</p>
           </div>
         ) : (
-          filteredTransactions.map((tx, index) => (
-            <div key={`${tx.id || tx.timestamp}-${index}`} className="transaction-card">
-              <div className="transaction-header">
-                <span 
-                  className="method-badge"
-                  style={{ backgroundColor: getMethodColor(tx.method) }}
-                >
-                  {formatMethod(tx.method)}
-                </span>
-                <span className="timestamp">{formatTime(tx.timestamp)}</span>
-              </div>
-              <div className="transaction-body">
-                <div className="origin">
-                  <strong>Origin:</strong> {tx.origin}
+          filteredTransactions.map((tx, index) => {
+            const aiSummary = tx.id ? aiSummaries[tx.id] : undefined
+            
+            return (
+              <div key={`${tx.id || tx.timestamp}-${index}`} className="transaction-card">
+                <div className="transaction-header">
+                  <span 
+                    className="method-badge"
+                    style={{ backgroundColor: getMethodColor(tx.method) }}
+                  >
+                    {formatMethod(tx.method)}
+                  </span>
+                  <span className="timestamp">{formatTime(tx.timestamp)}</span>
                 </div>
-                <div className="params">
-                  <strong>Parameters:</strong>
-                  {formatParams(tx.method, tx.params)}
-                </div>
-                {activeTab === 'pending' && tx.status === 'pending' && (
-                  <div className="action-buttons">
-                    <button 
-                      className="btn-approve"
-                      onClick={() => approveTransaction(tx)}
-                    >
-                      ✅ Approve & Send to Wallet
-                    </button>
-                    <button 
-                      className="btn-reject"
-                      onClick={() => rejectTransaction(tx)}
-                    >
-                      ❌ Reject
-                    </button>
+                
+                {/* AI Summary Section - Display above transaction details */}
+                {activeTab === 'pending' && tx.id && tx.method === 'eth_sendTransaction' && (
+                  <div className="ai-summary-section">
+                    <div className="ai-summary-header">
+                      <span className="ai-icon">🤖</span>
+                      <strong>AI Transaction Analysis</strong>
+                    </div>
+                    {aiSummary?.loading ? (
+                      <div className="ai-summary-loading">
+                        <div className="loading-spinner"></div>
+                        {aiSummary.text ? (
+                          <div className="ai-summary-text streaming">{aiSummary.text}</div>
+                        ) : (
+                          <span>Analyzing transaction...</span>
+                        )}
+                      </div>
+                    ) : aiSummary?.error ? (
+                      <div className="ai-summary-error">
+                        ⚠️ {aiSummary.error}
+                      </div>
+                    ) : aiSummary?.text ? (
+                      <div className="ai-summary-text">{aiSummary.text}</div>
+                    ) : (
+                      <div className="ai-summary-pending">
+                        <button 
+                          onClick={() => fetchAIAnalysisForTransaction(tx)}
+                          className="btn-analyze"
+                        >
+                          🔍 Analyze Transaction
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
-                {tx.status === 'approved' && (
-                  <div className="status-badge approved">✅ Approved</div>
-                )}
-                {tx.status === 'rejected' && (
-                  <div className="status-badge rejected">❌ Rejected</div>
-                )}
+                
+                <div className="transaction-body">
+                  <div className="origin">
+                    <strong>Origin:</strong> {tx.origin}
+                  </div>
+                  <div className="params">
+                    <strong>Parameters:</strong>
+                    {formatParams(tx.method, tx.params)}
+                  </div>
+                  {activeTab === 'pending' && tx.status === 'pending' && (
+                    <div className="action-buttons">
+                      <button 
+                        className="btn-approve"
+                        onClick={() => approveTransaction(tx)}
+                      >
+                        ✅ Approve & Send to Wallet
+                      </button>
+                      <button 
+                        className="btn-reject"
+                        onClick={() => rejectTransaction(tx)}
+                      >
+                        ❌ Reject
+                      </button>
+                    </div>
+                  )}
+                  {tx.status === 'approved' && (
+                    <div className="status-badge approved">✅ Approved</div>
+                  )}
+                  {tx.status === 'rejected' && (
+                    <div className="status-badge rejected">❌ Rejected</div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
 
