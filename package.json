@@ -1,9 +1,9 @@
 {
-  "name": "example-ext",
-  "displayName": "Example ext",
-  "version": "0.0.1",
-  "description": "A basic Plasmo extension.",
-  "author": "Plasmo Corp. <foss@plasmo.com>",
+  "name": "praetor",
+  "displayName": "Praetor",
+  "version": "1.0.0",
+  "description": "Praetor - Advanced Ethereum Transaction Guardian. Intercept, analyze, and protect your Web3 transactions with AI-powered security insights.",
+  "author": "Praetor Team",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
@@ -19,11 +19,15 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@tailwindcss/forms": "^0.5.10",
     "@types/chrome": "0.0.258",
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
     "prettier": "3.2.4",
+    "tailwindcss": "^3.4.17",
     "typescript": "5.3.3"
   },
   "manifest": {

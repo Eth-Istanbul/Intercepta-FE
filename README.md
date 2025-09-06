@@ -1,33 +1,69 @@
-This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
+# ⚔️ Praetor - Ethereum Transaction Guardian
 
-## Getting Started
+A powerful browser extension that intercepts, analyzes, and protects your Ethereum transactions with AI-powered insights.
 
-First, run the development server:
+## ✨ Features
+
+- 🛡️ **Transaction Interception**: Catch all Ethereum transactions before they reach your wallet
+- 🤖 **AI-Powered Analysis**: Get intelligent insights about transaction risks and purposes
+- 🎯 **Smart Filtering**: Easily filter and search through transaction history
+- ⚡ **Real-time Monitoring**: Auto-refresh and live transaction tracking
+- 🎨 **Modern UI**: Beautiful, responsive interface built with Tailwind CSS
+- 🔒 **Security First**: Review and approve transactions before execution
+
+## 🚀 Quick Start
+
+### Development
 
 ```bash
+# Install dependencies
+pnpm install
+
+# Start development server
 pnpm dev
-# or
-npm run dev
 ```
 
-Open your browser and load the appropriate development build. For example, if you are developing for the chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
-
-You can start editing the popup by modifying `popup.tsx`. It should auto-update as you make changes. To add an options page, simply add a `options.tsx` file to the root of the project, with a react component default exported. Likewise to add a content page, add a `content.ts` file to the root of the project, importing some module and do some logic, then reload the extension on your browser.
-
-For further guidance, [visit our Documentation](https://docs.plasmo.com/)
-
-## Making production build
-
-Run the following:
+### Building
 
 ```bash
+# Build for production
 pnpm build
-# or
-npm run build
+
+# Package extension
+pnpm package
 ```
 
-This should create a production bundle for your extension, ready to be zipped and published to the stores.
+## 🛠️ Tech Stack
 
-## Submit to the webstores
+- **Frontend**: React 18 + TypeScript
+- **Styling**: Tailwind CSS
+- **Build Tool**: Plasmo Framework
+- **AI Integration**: AI SDK for transaction analysis
+- **Extension**: Chrome Manifest V3
 
-The easiest way to deploy your Plasmo extension is to use the built-in [bpp](https://bpp.browser.market) GitHub action. Prior to using this action however, make sure to build your extension and upload the first version to the store to establish the basic credentials. Then, simply follow [this setup instruction](https://docs.plasmo.com/framework/workflows/submit) and you should be on your way for automated submission!
+## 📦 Installation
+
+1. Clone the repository
+2. Run `pnpm install`
+3. Run `pnpm dev` for development
+4. Load the extension from `build/chrome-mv3-dev` in Chrome
+
+## 🔐 Security Features
+
+- Transaction interception before wallet execution
+- AI-powered risk assessment
+- Manual approval/rejection workflow
+- Detailed transaction parameter analysis
+- Origin and method tracking
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+MIT License - Feel free to use this project for personal and commercial purposes.
+
+---
+
+**Praetor** - *Your trusted guardian in the Web3 realm*
