@@ -1,9 +1,9 @@
 {
-  "name": "praetor",
-  "displayName": "Praetor",
+  "name": "intercepta",
+  "displayName": "Intercepta",
   "version": "1.0.0",
-  "description": "Praetor - Advanced Ethereum Transaction Guardian. Intercept, analyze, and protect your Web3 transactions with AI-powered security insights.",
-  "author": "Praetor Team",
+  "description": "Intercepta - Advanced Ethereum Transaction Guardian. Intercept, analyze, and protect your Web3 transactions with AI-powered security insights.",
+  "author": "Intercepta Team",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",

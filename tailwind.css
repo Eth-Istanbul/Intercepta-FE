@@ -9,26 +9,26 @@
 }
 
 @layer components {
-  /* Custom scrollbar styles for dark theme */
+  /* Custom scrollbar styles for light theme */
   .custom-scrollbar::-webkit-scrollbar {
     @apply w-2;
   }
   
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-gray-900 rounded-full;
+    @apply bg-white rounded-full;
   }
   
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-700 rounded-full hover:bg-gray-600 transition-colors;
+    @apply bg-praetor-accent/30 rounded-full hover:bg-praetor-accent/50 transition-colors;
   }
   
-  /* Glass morphism effect for dark theme */
+  /* Subtle card effect for light theme */
   .glass {
-    @apply backdrop-blur-lg bg-gray-900/50 border border-gray-800;
+    @apply backdrop-blur-lg bg-white/60 border border-praetor-border;
   }
   
   .glass-dark {
-    @apply backdrop-blur-lg bg-black/60 border border-gray-800;
+    @apply backdrop-blur-lg bg-white/70 border border-praetor-border;
   }
   
   /* Button base styles */
@@ -36,13 +36,13 @@
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 transform hover:-translate-y-0.5;
   }
   
-  /* Professional hover effects */
+  /* Gentle hover */
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20;
+    @apply transition-all duration-300 hover:shadow-md hover:shadow-praetor-accent/20;
   }
   
-  /* AI summary styles for dark theme */
+  /* AI summary styles for light theme */
   .ai-summary-gradient {
-    @apply bg-gradient-to-br from-blue-900/20 to-cyan-900/20 border border-blue-800/30;
+    @apply bg-gradient-to-br from-praetor-accent/10 to-cyan-200/20 border border-praetor-accent/30;
   }
 }

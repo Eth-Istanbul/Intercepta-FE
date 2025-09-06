@@ -1,4 +1,4 @@
-# ⚔️ Praetor - Ethereum Transaction Guardian
+# ⚔️ Intercepta - Ethereum Transaction Guardian
 
 Hackathon-built browser extension that intercepts, analyzes, and protects your Ethereum transactions with AI-powered insights.
 
@@ -111,4 +111,4 @@ MIT License — Feel free to use this project for personal and commercial purpos
 
 ---
 
-**Praetor** — *Your trusted guardian in the Web3 realm*
+**Intercepta** — *Your trusted guardian in the Web3 realm*

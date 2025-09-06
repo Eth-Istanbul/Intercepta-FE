@@ -1,9 +1,9 @@
 {
-  "name": "Praetor - Ethereum Guardian",
+  "name": "Intercepta - Ethereum Guardian",
   "version": "1.0.0",
   "manifest_version": 3,
   "description": "Advanced Ethereum transaction security with AI-powered analysis. Intercept, review, and protect your Web3 interactions.",
-  "author": "Praetor Team",
+  "author": "Intercepta Team",
   
   "icons": {
     "16": "assets/icon.png",
@@ -20,7 +20,7 @@
       "48": "assets/icon.png",
       "128": "assets/icon.png"
     },
-    "default_title": "Praetor - Transaction Guardian"
+    "default_title": "Intercepta - Transaction Guardian"
   },
   
   "background": {
