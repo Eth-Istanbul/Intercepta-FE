@@ -10,10 +10,15 @@ module.exports = {
     extend: {
       colors: {
         praetor: {
-          purple: '#764ba2',
-          indigo: '#667eea',
-          dark: '#1a1b3a',
-          light: '#f0f3ff'
+          black: '#0a0a0a',
+          dark: '#141414',
+          darker: '#1a1a1a',
+          gray: '#2a2a2a',
+          border: '#333333',
+          accent: '#4a9eff',
+          success: '#22c55e',
+          danger: '#ef4444',
+          warning: '#f59e0b'
         }
       },
       animation: {

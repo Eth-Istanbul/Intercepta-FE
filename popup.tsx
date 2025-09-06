@@ -266,21 +266,21 @@ function IndexPopup() {
         return (
           <div>
             {analysis.warnings.length > 0 && (
-              <div className="mb-2 p-2 bg-red-500/20 border border-red-500/40 rounded">
+              <div className="mb-2 p-2 bg-praetor-danger/10 border border-praetor-danger/30 rounded">
                 {analysis.warnings.map((warning, idx) => (
-                  <div key={idx} className="text-xs text-white font-medium mb-1 last:mb-0">{warning}</div>
+                  <div key={idx} className="text-xs text-praetor-warning font-medium mb-1 last:mb-0">{warning}</div>
                 ))}
               </div>
             )}
-            <div className="mt-1.5 p-2 bg-black/20 rounded font-mono text-xs">
-              {txData.from && <div className="mb-1 break-all"><strong className="font-semibold">From:</strong> {formatAddress(txData.from)}</div>}
-              {txData.to && <div className="mb-1 break-all"><strong className="font-semibold">To:</strong> {formatAddress(txData.to)}</div>}
-              {txData.value && <div className="mb-1"><strong className="font-semibold">Value:</strong> {formatWeiToEth(txData.value)}</div>}
-              {analysis.details.functionName && <div className="mb-1"><strong className="font-semibold">Function:</strong> {analysis.details.functionName}</div>}
+            <div className="mt-1.5 p-2 bg-praetor-gray/50 rounded font-mono text-xs text-gray-300">
+              {txData.from && <div className="mb-1 break-all"><strong className="font-semibold text-gray-100">From:</strong> {formatAddress(txData.from)}</div>}
+              {txData.to && <div className="mb-1 break-all"><strong className="font-semibold text-gray-100">To:</strong> {formatAddress(txData.to)}</div>}
+              {txData.value && <div className="mb-1"><strong className="font-semibold text-gray-100">Value:</strong> {formatWeiToEth(txData.value)}</div>}
+              {analysis.details.functionName && <div className="mb-1"><strong className="font-semibold text-gray-100">Function:</strong> {analysis.details.functionName}</div>}
               {analysis.details.tokenTransfer && (
-                <div className="mb-1"><strong className="font-semibold">Token Transfer:</strong> {analysis.details.tokenTransfer.token}</div>
+                <div className="mb-1"><strong className="font-semibold text-gray-100">Token Transfer:</strong> {analysis.details.tokenTransfer.token}</div>
               )}
-              {txData.data && txData.data !== '0x' && <div className="mb-1 break-all"><strong className="font-semibold">Data:</strong> {txData.data.slice(0, 20)}...</div>}
+              {txData.data && txData.data !== '0x' && <div className="mb-1 break-all"><strong className="font-semibold text-gray-100">Data:</strong> {txData.data.slice(0, 20)}...</div>}
             </div>
           </div>
         )
@@ -292,26 +292,27 @@ function IndexPopup() {
   }
 
   return (
-    <div className="w-[520px] min-h-[400px] max-h-[600px] bg-gradient-to-br from-praetor-indigo to-praetor-purple text-white font-sans">
-      <div className="glass p-4 border-b border-white/20">
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+    <div className="w-[520px] min-h-[400px] max-h-[600px] bg-praetor-black text-white font-sans">
+      <div className="bg-praetor-dark border-b border-praetor-border p-4">
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2 text-white">
           <span className="text-2xl">⚔️</span>
-          Praetor - Transaction Guardian
+          <span className="bg-gradient-to-r from-praetor-accent to-blue-400 bg-clip-text text-transparent font-bold">Praetor</span>
+          <span className="text-gray-400 font-normal">Transaction Guardian</span>
         </h2>
         <div className="flex gap-2 items-center flex-wrap">
-          <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-white/90">
+          <label className="flex items-center gap-2 text-sm cursor-pointer text-gray-300 hover:text-white transition-colors">
             <input 
               type="checkbox" 
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded border-white/30 bg-white/10 text-praetor-purple focus:ring-2 focus:ring-white/30"
+              className="rounded border-praetor-border bg-praetor-gray text-praetor-accent focus:ring-2 focus:ring-praetor-accent/50"
             />
             Auto-refresh
           </label>
-          <button onClick={loadTransactions} className="btn-base glass hover:bg-white/20 text-sm">
+          <button onClick={loadTransactions} className="px-3 py-1.5 bg-praetor-gray hover:bg-praetor-border border border-praetor-border rounded-lg text-sm font-medium transition-all hover:scale-105">
             🔄 Refresh
           </button>
-          <button onClick={clearTransactions} className="btn-base glass hover:bg-white/20 text-sm">
+          <button onClick={clearTransactions} className="px-3 py-1.5 bg-praetor-gray hover:bg-praetor-border border border-praetor-border rounded-lg text-sm font-medium transition-all hover:scale-105">
             🗑️ Clear {activeTab === 'pending' ? 'Pending' : 'History'}
           </button>
           <button onClick={() => {
@@ -336,18 +337,18 @@ function IndexPopup() {
               console.log("[Popup] Test transaction sent:", response)
               setTimeout(loadTransactions, 500)
             })
-          }} className="btn-base glass hover:bg-white/20 text-sm">
+          }} className="px-3 py-1.5 bg-praetor-gray hover:bg-praetor-border border border-praetor-border rounded-lg text-sm font-medium transition-all hover:scale-105">
             🧪 Test
           </button>
         </div>
       </div>
 
-      <div className="flex bg-white/5 border-b border-white/10">
+      <div className="flex bg-praetor-darker border-b border-praetor-border">
         <button 
           className={`flex-1 px-4 py-3 text-sm font-medium transition-all border-b-2 ${
             activeTab === 'pending' 
-              ? 'text-white border-white bg-white/10' 
-              : 'text-white/70 border-transparent hover:text-white/90 hover:bg-white/5'
+              ? 'text-praetor-accent border-praetor-accent bg-praetor-gray/30' 
+              : 'text-gray-400 border-transparent hover:text-gray-200 hover:bg-praetor-gray/20'
           }`}
           onClick={() => setActiveTab('pending')}
         >
@@ -356,8 +357,8 @@ function IndexPopup() {
         <button 
           className={`flex-1 px-4 py-3 text-sm font-medium transition-all border-b-2 ${
             activeTab === 'history' 
-              ? 'text-white border-white bg-white/10' 
-              : 'text-white/70 border-transparent hover:text-white/90 hover:bg-white/5'
+              ? 'text-praetor-accent border-praetor-accent bg-praetor-gray/30' 
+              : 'text-gray-400 border-transparent hover:text-gray-200 hover:bg-praetor-gray/20'
           }`}
           onClick={() => setActiveTab('history')}
         >
@@ -365,39 +366,39 @@ function IndexPopup() {
         </button>
       </div>
 
-      <div className="p-3 bg-white/5">
+      <div className="p-3 bg-praetor-darker">
         <input 
           type="text"
           placeholder="Filter by method or origin..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 focus:outline-none focus:bg-white/15 focus:border-white/40 transition-all"
+          className="w-full px-3 py-2 bg-praetor-gray border border-praetor-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-praetor-accent/50 focus:ring-1 focus:ring-praetor-accent/30 transition-all"
         />
       </div>
 
-      <div className="flex gap-5 px-4 py-3 bg-white/5 border-b border-white/10">
+      <div className="flex gap-5 px-4 py-3 bg-praetor-darker border-b border-praetor-border">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-white/80">Total {activeTab === 'pending' ? 'Pending' : 'History'}:</span>
-          <span className="text-sm font-semibold bg-white/20 px-2 py-0.5 rounded-full">{currentTransactions.length}</span>
+          <span className="text-xs text-gray-400">Total {activeTab === 'pending' ? 'Pending' : 'History'}:</span>
+          <span className="text-sm font-semibold bg-praetor-accent/20 text-praetor-accent px-2 py-0.5 rounded-full">{currentTransactions.length}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-white/80">Showing:</span>
-          <span className="text-sm font-semibold bg-white/20 px-2 py-0.5 rounded-full">{filteredTransactions.length}</span>
+          <span className="text-xs text-gray-400">Showing:</span>
+          <span className="text-sm font-semibold bg-praetor-accent/20 text-praetor-accent px-2 py-0.5 rounded-full">{filteredTransactions.length}</span>
         </div>
       </div>
 
-      <div className="max-h-[350px] overflow-y-auto p-4 custom-scrollbar">
+      <div className="max-h-[350px] overflow-y-auto p-4 custom-scrollbar bg-praetor-black">
         {filteredTransactions.length === 0 ? (
-          <div className="text-center py-10 text-white/90">
-            <p className="text-sm mb-2">No {activeTab === 'pending' ? 'pending' : ''} transactions {activeTab === 'pending' ? 'awaiting approval' : 'intercepted yet'}.</p>
-            <p className="text-xs text-white/70">Visit a DApp and interact with your wallet to see intercepted transactions.</p>
+          <div className="text-center py-10">
+            <p className="text-sm mb-2 text-gray-300">No {activeTab === 'pending' ? 'pending' : ''} transactions {activeTab === 'pending' ? 'awaiting approval' : 'intercepted yet'}.</p>
+            <p className="text-xs text-gray-500">Visit a DApp and interact with your wallet to see intercepted transactions.</p>
           </div>
         ) : (
           filteredTransactions.map((tx, index) => {
             const aiSummary = tx.id ? aiSummaries[tx.id] : undefined
             
             return (
-              <div key={`${tx.id || tx.timestamp}-${index}`} className="glass rounded-lg p-3 mb-3 transition-all duration-200 hover:bg-white/15 hover:transform hover:translate-x-1 animate-slide-in">
+              <div key={`${tx.id || tx.timestamp}-${index}`} className="bg-praetor-dark border border-praetor-border rounded-lg p-3 mb-3 transition-all duration-200 hover:bg-praetor-darker hover:border-praetor-accent/30 hover:transform hover:translate-x-1 animate-slide-in">
                 <div className="flex justify-between items-center mb-3">
                   <span 
                     className="px-3 py-1 rounded text-xs font-semibold uppercase tracking-wider text-white shadow-lg"
@@ -405,36 +406,36 @@ function IndexPopup() {
                   >
                     {formatMethod(tx.method)}
                   </span>
-                  <span className="text-xs text-white/70">{formatTime(tx.timestamp)}</span>
+                  <span className="text-xs text-gray-500">{formatTime(tx.timestamp)}</span>
                 </div>
                 
                 {/* AI Summary Section - Display above transaction details */}
                 {activeTab === 'pending' && tx.id && tx.method === 'eth_sendTransaction' && (
-                  <div className="ai-summary-gradient rounded-lg p-3 mb-3 shadow-md">
-                    <div className="flex items-center gap-2 mb-2 text-blue-700 text-sm font-medium">
+                  <div className="bg-gradient-to-r from-praetor-accent/10 to-blue-500/10 border border-praetor-accent/30 rounded-lg p-3 mb-3">
+                    <div className="flex items-center gap-2 mb-2 text-praetor-accent text-sm font-medium">
                       <span className="text-lg">🤖</span>
                       <strong>AI Transaction Analysis</strong>
                     </div>
                     {aiSummary?.loading ? (
                       <div className="flex flex-col gap-2">
-                        <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                        <div className="w-5 h-5 border-2 border-praetor-border border-t-praetor-accent rounded-full animate-spin"></div>
                         {aiSummary.text ? (
-                          <div className="bg-white p-2.5 rounded-md text-xs leading-relaxed text-gray-800 whitespace-pre-wrap break-words border border-dashed border-blue-400 animate-pulse">{aiSummary.text}</div>
+                          <div className="bg-praetor-gray/50 p-2.5 rounded-md text-xs leading-relaxed text-gray-200 whitespace-pre-wrap break-words border border-dashed border-praetor-accent/50 animate-pulse">{aiSummary.text}</div>
                         ) : (
-                          <span className="text-xs text-gray-600">Analyzing transaction...</span>
+                          <span className="text-xs text-gray-400">Analyzing transaction...</span>
                         )}
                       </div>
                     ) : aiSummary?.error ? (
-                      <div className="bg-red-50 border border-red-200 text-red-700 px-2.5 py-2 rounded-md text-xs">
+                      <div className="bg-praetor-danger/10 border border-praetor-danger/30 text-praetor-danger px-2.5 py-2 rounded-md text-xs">
                         ⚠️ {aiSummary.error}
                       </div>
                     ) : aiSummary?.text ? (
-                      <div className="bg-white p-2.5 rounded-md text-xs leading-relaxed text-gray-800 whitespace-pre-wrap break-words">{aiSummary.text}</div>
+                      <div className="bg-praetor-gray/50 p-2.5 rounded-md text-xs leading-relaxed text-gray-200 whitespace-pre-wrap break-words">{aiSummary.text}</div>
                     ) : (
                       <div className="py-2">
                         <button 
                           onClick={() => fetchAIAnalysisForTransaction(tx)}
-                          className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-md text-xs font-medium shadow-md hover:from-blue-700 hover:to-blue-800 hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 active:translate-y-0 active:shadow-md"
+                          className="bg-gradient-to-r from-praetor-accent to-blue-500 text-white px-4 py-2 rounded-md text-xs font-medium shadow-md hover:from-blue-500 hover:to-praetor-accent hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 active:translate-y-0 active:shadow-md"
                         >
                           🔍 Analyze Transaction
                         </button>
@@ -444,23 +445,23 @@ function IndexPopup() {
                 )}
                 
                 <div className="text-xs">
-                  <div className="mb-2 text-white/90 break-all">
-                    <strong className="font-semibold text-white mr-1.5">Origin:</strong> {tx.origin}
+                  <div className="mb-2 text-gray-300 break-all">
+                    <strong className="font-semibold text-gray-100 mr-1.5">Origin:</strong> {tx.origin}
                   </div>
-                  <div className="text-white/90">
-                    <strong className="font-semibold text-white mr-1.5">Parameters:</strong>
+                  <div className="text-gray-300">
+                    <strong className="font-semibold text-gray-100 mr-1.5">Parameters:</strong>
                     {formatParams(tx.method, tx.params)}
                   </div>
                   {activeTab === 'pending' && tx.status === 'pending' && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-praetor-border">
                       <button 
-                        className="flex-1 py-2 px-4 rounded-lg text-xs font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 shadow-md hover:from-green-700 hover:to-emerald-700 hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                        className="flex-1 py-2 px-4 rounded-lg text-xs font-medium text-white bg-praetor-success hover:bg-praetor-success/80 transition-all duration-200 transform hover:scale-105"
                         onClick={() => approveTransaction(tx)}
                       >
                         ✅ Approve & Send to Wallet
                       </button>
                       <button 
-                        className="flex-1 py-2 px-4 rounded-lg text-xs font-medium text-white bg-gradient-to-r from-red-600 to-rose-600 shadow-md hover:from-red-700 hover:to-rose-700 hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                        className="flex-1 py-2 px-4 rounded-lg text-xs font-medium text-white bg-praetor-danger hover:bg-praetor-danger/80 transition-all duration-200 transform hover:scale-105"
                         onClick={() => rejectTransaction(tx)}
                       >
                         ❌ Reject
@@ -468,10 +469,10 @@ function IndexPopup() {
                     </div>
                   )}
                   {tx.status === 'approved' && (
-                    <div className="inline-block px-2.5 py-1 mt-2 bg-green-500/20 border border-green-500/40 text-green-400 rounded text-xs font-medium">✅ Approved</div>
+                    <div className="inline-block px-2.5 py-1 mt-2 bg-praetor-success/20 border border-praetor-success/40 text-praetor-success rounded text-xs font-medium">✅ Approved</div>
                   )}
                   {tx.status === 'rejected' && (
-                    <div className="inline-block px-2.5 py-1 mt-2 bg-red-500/20 border border-red-500/40 text-red-400 rounded text-xs font-medium">❌ Rejected</div>
+                    <div className="inline-block px-2.5 py-1 mt-2 bg-praetor-danger/20 border border-praetor-danger/40 text-praetor-danger rounded text-xs font-medium">❌ Rejected</div>
                   )}
                 </div>
               </div>
@@ -480,8 +481,8 @@ function IndexPopup() {
         )}
       </div>
 
-      <div className="glass px-4 py-3 border-t border-white/20 text-center">
-        <p className="text-xs text-white/80">Praetor - Guarding your Ethereum transactions in real-time</p>
+      <div className="bg-praetor-dark px-4 py-3 border-t border-praetor-border text-center">
+        <p className="text-xs text-gray-500">Praetor - Guarding your Ethereum transactions in real-time</p>
       </div>
     </div>
   )
